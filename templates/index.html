@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hytale Server Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ========== CSS VARIABLES (Modern Theme) ========== */
+        :root {
+            --primary-color: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --secondary-color: #8b5cf6;
+            
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            
+            --bg-body: #0f172a;
+            --bg-sidebar: rgba(15, 23, 42, 0.95);
+            --bg-card: rgba(30, 41, 59, 0.6);
+            --bg-input: rgba(15, 23, 42, 0.8);
+            
+            --text-main: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            --border-color: rgba(148, 163, 184, 0.1);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.05);
+            
+            --sidebar-width: 260px;
+            --header-height: 70px;
+            --radius: 16px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ========== RESET & BASE ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 20%);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-card); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        
+        /* ========== LAYOUT ========== */
+        .app-container { display: flex; height: 100vh; overflow: hidden; }
+        
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-sidebar);
+            border-right: var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            transition: transform var(--transition);
+        }
+        
+        .sidebar-header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            border-bottom: var(--glass-border);
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo i {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+        }
+        .logo-text h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
+        .logo-text p { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+        
+        .sidebar-nav { flex: 1; padding: 2rem 1rem; overflow-y: auto; }
+        .nav-category { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 0 0 0.8rem 1rem; font-weight: 600; }
+        
+        .nav-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 0.9rem 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius);
+            transition: var(--transition);
+            font-weight: 500;
+        }
+        
+        .nav-link:hover { background: rgba(255, 255, 255, 0.03); color: var(--text-main); transform: translateX(4px); }
+        .nav-link.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent); color: var(--primary-color); border-left: 3px solid var(--primary-color); }
+        .nav-link i { width: 20px; text-align: center; }
+
+        /* Server Status Widget in Sidebar */
+        .sidebar-widget {
+            margin: 1rem;
+            padding: 1.2rem;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: var(--glass-border);
+        }
+        .widget-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; font-size: 0.9rem; }
+        .widget-row:last-child { margin-bottom: 0; }
+        .status-pill {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.85rem; font-weight: 600;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.online { background: var(--success-color); box-shadow: 0 0 8px var(--success-color); }
+        .dot.offline { background: var(--danger-color); }
+        .dot.ghost { background: var(--warning-color); animation: pulse 1s infinite; }
+        .dot.loading { background: var(--warning-color); }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .top-bar {
+            height: var(--header-height);
+            border-bottom: var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+        }
+
+        .page-title { font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        
+        .content-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        /* ========== CARDS & GRID ========== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: var(--glass-border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        .card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.1); }
+        
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            opacity: 0; transition: var(--transition);
+        }
+        .card:hover::before { opacity: 1; }
+
+        .stat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .stat-icon {
+            font-size: 1.5rem; color: var(--primary-color);
+            background: rgba(59, 130, 246, 0.1); padding: 10px; border-radius: 12px;
+        }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--text-main); }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        
+        .btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-primary { background: var(--primary-color); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .btn-success { background: var(--success-color); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-danger { background: var(--danger-color); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+        .btn-warning { background: var(--warning-color); color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
+        .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text-main); border: var(--glass-border); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        /* ========== CONSOLE ========== */
+        .console-box {
+            background: #000;
+            border-radius: var(--radius);
+            border: var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .console-output {
+            height: 450px;
+            overflow-y: auto;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .console-line { word-wrap: break-word; }
+        .console-input-wrapper { display: flex; border-top: 1px solid #333; }
+        .console-input {
+            flex: 1; background: #111; border: none; padding: 1rem;
+            color: #fff; font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* ========== FORMS ========== */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .form-control {
+            width: 100%; padding: 0.9rem;
+            background: var(--bg-input); border: var(--glass-border);
+            border-radius: 10px; color: white; font-family: inherit;
+            transition: var(--transition);
+        }
+        .form-control:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .form-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; display: block; }
+
+        /* ========== GHOST WARNING ========== */
+        .ghost-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+            padding: 1rem;
+            border-radius: var(--radius);
+            display: flex; align-items: center; gap: 1rem;
+            margin-top: 1.5rem;
+            display: none; /* Hidden by default */
+        }
+
+        /* ========== UTILS ========== */
+        .d-none { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Notification Toast */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-sidebar); border: var(--glass-border);
+            padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; align-items: center; gap: 10px; color: var(--text-main);
+            animation: slideIn 0.3s ease-out; border-left: 4px solid var(--primary-color);
+        }
+        .toast.success { border-color: var(--success-color); }
+        .toast.error { border-color: var(--danger-color); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Mobile Responsive */
+        .mobile-menu-btn { display: none; background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100%; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .mobile-menu-btn { display: block; }
+            .top-bar { padding: 0 1rem; }
+            .content-scroll { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-cube"></i>
+                    <div class="logo-text">
+                        <h1>HYTALE</h1>
+                        <p>Dashboard</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-category">Main Menu</div>
+                <a href="#" class="nav-link active" data-target="dashboard">
+                    <i class="fas fa-home"></i> <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-target="players">
+                    <i class="fas fa-users"></i> <span>Players</span>
+                </a>
+                <a href="#" class="nav-link" data-target="console">
+                    <i class="fas fa-terminal"></i> <span>Console</span>
+                </a>
+                <a href="#" class="nav-link" data-target="settings">
+                    <i class="fas fa-sliders-h"></i> <span>Settings</span>
+                </a>
+
+                <div class="nav-category" style="margin-top: 2rem;">Server Status</div>
+                <div class="sidebar-widget">
+                    <div class="widget-row">
+                        <span>State</span>
+                        <div class="status-pill">
+                            <div class="dot offline" id="statusDot"></div>
+                            <span id="statusText">Offline</span>
+                        </div>
+                    </div>
+                    <div class="widget-row">
+                        <span>Uptime</span>
+                        <span style="color: var(--text-main);" id="sideUptime">0s</span>
+                    </div>
+                    <div class="widget-row">
+                        <span>Players</span>
+                        <span style="color: var(--primary-color);" id="sidePlayers">0</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                    <div class="page-title" id="pageTitle"><i class="fas fa-home"></i> Dashboard</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="loadAllData()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </header>
+
+            <div class="content-scroll">
+                
+                <div id="page-dashboard" class="page-section fade-in">
+                    <div class="stats-grid">
+                        <div class="card">
+                            <div class="stat-header">
+                                <div class="stat-icon"><i class="fas fa-microchip"></i></div>
+                                <span class="stat-label">CPU Load</span>
+                            </div>
+                            <div class="stat-value" id="cpuValue">0%</div>
+                        </div>
+                        <div class="card">
+                            <div class="stat-header">
+                                <div class="stat-icon"><i class="fas fa-memory"></i></div>
+                                <span class="stat-label">RAM Usage</span>
+                            </div>
+                            <div class="stat-value" id="ramValue">0 GB</div>
+                        </div>
+                        <div class="card">
+                            <div class="stat-header">
+                                <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
+                                <span class="stat-label">Online</span>
+                            </div>
+                            <div class="stat-value" id="playersValue">0</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="stat-header">
+                            <h3 style="font-size: 1.1rem; font-weight: 600;">Power Controls</h3>
+                        </div>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-success" onclick="controlServer('start')">
+                                <i class="fas fa-play"></i> Start Server
+                            </button>
+                            <button class="btn btn-danger" onclick="controlServer('stop')">
+                                <i class="fas fa-square"></i> Stop (Force)
+                            </button>
+                            <button class="btn btn-warning" onclick="restartServer()">
+                                <i class="fas fa-redo"></i> Restart
+                            </button>
+                        </div>
+
+                        <div id="ghostWarning" class="ghost-warning">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Ghost Process Detected</strong><br>
+                                <span style="font-size: 0.9rem; opacity: 0.9;">The server seems to be running in the background but detached. Please click "Stop (Force)" to fix this before starting.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-players" class="page-section d-none fade-in">
+                    <div class="card">
+                        <div class="stat-header">
+                            <h3>Player Management</h3>
+                            <button class="btn btn-ghost btn-sm" onclick="loadAllData()">Update</button>
+                        </div>
+                        <div id="playersListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">No players online</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-console" class="page-section d-none fade-in">
+                    <div class="console-box">
+                        <div class="console-output" id="consoleOutput">
+                            <div class="console-line" style="color: var(--primary-color)">[System] Dashboard connected. Waiting for logs...</div>
+                        </div>
+                        <div class="console-input-wrapper">
+                            <input type="text" class="console-input" id="consoleInput" placeholder="Type a command (e.g., /op username)...">
+                            <button class="btn btn-primary" onclick="sendCommand()" style="border-radius: 0;">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-settings" class="page-section d-none fade-in">
+                    <div class="card" style="max-width: 600px; margin: 0 auto;">
+                        <div class="stat-header">
+                            <h3>Server Configuration</h3>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Start Script Path (start.sh)</label>
+                            <input type="text" class="form-control" id="confStartScript">
+                            <small class="form-hint">Absolute path to your startup script.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Server Directory</label>
+                            <input type="text" class="form-control" id="confServerDir">
+                            <small class="form-hint">Folder containing HytaleServer.jar and logs.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Max RAM Display (GB)</label>
+                            <input type="number" class="form-control" id="confMaxRam">
+                        </div>
+
+                        <div style="text-align: right;">
+                            <button class="btn btn-primary" onclick="saveSettings()">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // --- CONFIG ---
+        const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api';
+        let refreshTimer = null;
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavigation();
+            loadAllData();
+            startAutoRefresh();
+            
+            // Enter key for console
+            document.getElementById('consoleInput').addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') sendCommand();
+            });
+        });
+
+        // --- NAVIGATION ---
+        function setupNavigation() {
+            const links = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.page-section');
+            const title = document.getElementById('pageTitle');
+
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Remove active classes
+                    links.forEach(l => l.classList.remove('active'));
+                    sections.forEach(s => s.classList.add('d-none'));
+
+                    // Add active class
+                    link.classList.add('active');
+                    const targetId = link.getAttribute('data-target');
+                    document.getElementById(`page-${targetId}`).classList.remove('d-none');
+                    
+                    // Update Title
+                    const iconClass = link.querySelector('i').className;
+                    const text = link.querySelector('span').innerText;
+                    title.innerHTML = `<i class="${iconClass}"></i> ${text}`;
+
+                    // Specific Logic
+                    if(targetId === 'settings') loadSettings();
+                    if(targetId === 'console') loadLogs();
+                });
+            });
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // --- DATA FETCHING ---
+        async function fetchAPI(endpoint, method = 'GET', body = null) {
+            try {
+                const opts = { method, headers: { 'Content-Type': 'application/json' } };
+                if(body) opts.body = JSON.stringify(body);
+                
+                const req = await fetch(`${API_URL}${endpoint}`, opts);
+                return await req.json();
+            } catch (err) {
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function loadAllData() {
+            const data = await fetchAPI('/status');
+            if(!data) {
+                setOfflineState();
+                return;
+            }
+            updateUI(data);
+            
+            // If on console page, refresh logs
+            if(!document.getElementById('page-console').classList.contains('d-none')) {
+                loadLogs();
+            }
+        }
+
+        function updateUI(data) {
+            // Status Logic
+            const status = data.server.status;
+            const dot = document.getElementById('statusDot');
+            const label = document.getElementById('statusText');
+            const ghostBox = document.getElementById('ghostWarning');
+
+            if (status === 'running') {
+                dot.className = 'dot online';
+                label.innerText = 'Online';
+                label.style.color = 'var(--success-color)';
+                ghostBox.style.display = 'none';
+            } else if (status === 'ghost') {
+                dot.className = 'dot ghost';
+                label.innerText = 'Ghost Process';
+                label.style.color = 'var(--warning-color)';
+                ghostBox.style.display = 'flex'; // SHOW WARNING
+                showToast('Ghost process detected! Check controls.', 'error');
+            } else {
+                dot.className = 'dot offline';
+                label.innerText = 'Offline';
+                label.style.color = 'var(--danger-color)';
+                ghostBox.style.display = 'none';
+            }
+
+            // Stats
+            document.getElementById('sideUptime').innerText = data.server.uptime_s + 's';
+            document.getElementById('sidePlayers').innerText = data.players.count;
+            document.getElementById('playersValue').innerText = data.players.count;
+            document.getElementById('cpuValue').innerText = data.stats.cpu + '%';
+            document.getElementById('ramValue').innerText = `${data.stats.ram_usage_gb} / ${data.stats.ram_max_gb} GB`;
+
+            // Player List
+            updatePlayerList(data.players.list);
+        }
+
+        function setOfflineState() {
+            document.getElementById('statusDot').className = 'dot offline';
+            document.getElementById('statusText').innerText = 'Connection Lost';
+            document.getElementById('cpuValue').innerText = '0%';
+        }
+
+        function updatePlayerList(players) {
+            const container = document.getElementById('playersListContainer');
+            if(!players || players.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No players online</div>';
+                return;
+            }
+            
+            container.innerHTML = players.map(p => `
+                <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                            ${p.charAt(0).toUpperCase()}
+                        </div>
+                        <span>${p}</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-warning btn-sm" onclick="sendConsoleCommand('kick ${p}')">Kick</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- CONTROLS ---
+        async function controlServer(action) {
+            showToast(`Sending ${action} command...`, 'info');
+            const res = await fetchAPI(`/control/${action}`, 'POST');
+            if(res && res.success) {
+                showToast(`Success: ${action}`, 'success');
+                setTimeout(loadAllData, 1000);
+            } else {
+                showToast(`Error: ${res ? res.error : 'API Failed'}`, 'error');
+            }
+        }
+
+        function restartServer() {
+            if(confirm("Are you sure you want to restart?")) {
+                controlServer('stop');
+                setTimeout(() => controlServer('start'), 5000);
+            }
+        }
+
+        // --- CONSOLE ---
+        async function loadLogs() {
+            const data = await fetchAPI('/logs');
+            if(data && data.lines) {
+                const box = document.getElementById('consoleOutput');
+                box.innerHTML = data.lines.map(line => `<div class="console-line">${line}</div>`).join('');
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        async function sendCommand() {
+            const input = document.getElementById('consoleInput');
+            const cmd = input.value;
+            if(!cmd) return;
+            
+            sendConsoleCommand(cmd);
+            input.value = '';
+        }
+
+        async function sendConsoleCommand(cmd) {
+            const res = await fetchAPI('/command', 'POST', { command: cmd });
+            if(res && res.success) {
+                showToast('Command sent', 'success');
+                setTimeout(loadLogs, 500);
+            } else {
+                showToast('Failed to send command', 'error');
+            }
+        }
+
+        // --- SETTINGS ---
+        async function loadSettings() {
+            const data = await fetchAPI('/settings');
+            if(data) {
+                document.getElementById('confStartScript').value = data.start_script || '';
+                document.getElementById('confServerDir').value = data.server_dir || '';
+                document.getElementById('confMaxRam').value = data.max_ram || 12;
+            }
+        }
+
+        async function saveSettings() {
+            const payload = {
+                start_script: document.getElementById('confStartScript').value,
+                server_dir: document.getElementById('confServerDir').value,
+                max_ram: document.getElementById('confMaxRam').value
+            };
+            const res = await fetchAPI('/settings', 'POST', payload);
+            if(res && res.success) showToast('Settings saved!', 'success');
+            else showToast('Error saving settings', 'error');
+        }
+
+        // --- UTILS ---
+        function startAutoRefresh() {
+            if(refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(loadAllData, 2000);
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+    </script>
+</body>
+</html>
