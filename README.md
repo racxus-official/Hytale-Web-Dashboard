@@ -3,6 +3,7 @@
 A modern, portable, and cross-platform web interface designed to manage and monitor your Hytale Server. 
 
 ---
+<img width="1914" height="987" alt="Captura de ecrã de 2026-02-07 22-27-50" src="https://github.com/user-attachments/assets/68bbaef2-3aac-45d1-9822-4f650c442165" />
 
 ## 🐧 Platform Origins
 This project was **originally developed on Linux**. While it is fully compatible with Windows, it maintains a Linux-first logic for stability and performance. If you encounter Windows-specific issues, please follow the contact instructions below.
